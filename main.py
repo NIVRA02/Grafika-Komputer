@@ -24,8 +24,8 @@ class Pen(turtle.Turtle):
 levels = [""]
 
 level_1 = [
-    "XXXXXXXXXXXXXXXXXXXXXXXXX",
-    "X S X   X     X   X   X X",
+    "XXXXXXXXXXXXXXXXXXXXXXX X",
+    "X   X   X     X   X   X X",
     "X X X X X XXX X X X X X X",
     "X   X   X   X X X   X X X",
     "X XXX XXXXX X X X XXX X X",
@@ -47,8 +47,8 @@ level_1 = [
     "X X X X X X X X X X X X X",
     "X   X   X X X X X X   X X",
     "X X X X X X X X X X X X X",
-    "X X   X     X E X   X   X",
-    "XXXXXXXXXXXXXXXXXXXXXXXXX"
+    "X X   X     X   X   X   X",
+    "X XXXXXXXXXXXXXXXXXXXXXXX"
 ]
 
 levels.append(level_1)
