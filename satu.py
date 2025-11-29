@@ -4,6 +4,7 @@ import pygame
 import cairo
 import random
 
+# --- INISIALISASI ---
 pygame.init()
 try:
     pygame.mixer.quit()
@@ -13,6 +14,7 @@ except Exception:
 WIDTH, HEIGHT = 1200, 700
 FPS = 60
 
+# --- WARNA ---
 ROAD_RGB = (235, 235, 230)
 BG_RGB = (89, 166, 89)
 HUD_BG = (40, 40, 40, 180)
@@ -26,16 +28,20 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Car Maze - Road Only + Trees")
 clock = pygame.time.Clock()
 
+# --- PEMBUATAN MAP DENGAN PYCAIRO ---
 def create_cairo_surface():
     s = cairo.ImageSurface(cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
     ctx = cairo.Context(s)
 
+    # Background Rumput
     ctx.set_source_rgb(0.35, 0.65, 0.35)
     ctx.rectangle(0, 0, WIDTH, HEIGHT)
     ctx.fill()
 
     ctx.set_line_cap(cairo.LINE_CAP_ROUND)
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
+    
+    # Jalur Jalan
     paths = [
         [(50, 650), (50, 550), (150, 550), (150, 450), (50, 450), (50, 350), (150, 350)],
         [(150, 350), (150, 250), (50, 250), (50, 150), (150, 150), (150, 50), (250, 50)],
@@ -65,7 +71,8 @@ def create_cairo_surface():
         [(650, 450), (650, 350)],
     ]
 
-    ctx.set_source_rgb(0.25, 0.45, 0.25)
+    # Gambar Aspal (Layer Bawah)
+    ctx.set_source_rgb(0.25, 0.45, 0.25) # Warna outline jalan
     ctx.set_line_width(50)
     for path in paths:
         ctx.new_path()
@@ -74,6 +81,7 @@ def create_cairo_surface():
             ctx.line_to(p[0], p[1])
         ctx.stroke()
 
+    # Gambar Jalan Utama
     ctx.set_source_rgb(0.92, 0.92, 0.90)
     ctx.set_line_width(45)
     for path in paths:
@@ -83,6 +91,7 @@ def create_cairo_surface():
             ctx.line_to(p[0], p[1])
         ctx.stroke()
 
+    # Gambar Garis Putus-putus
     ctx.set_source_rgb(0.85, 0.85, 0.83)
     ctx.set_line_width(2)
     ctx.set_dash([10, 10])
@@ -94,6 +103,7 @@ def create_cairo_surface():
         ctx.stroke()
     ctx.set_dash([])
 
+    # Fungsi Gambar Rumah
     def draw_house(x, y, w, h, c, roof):
         ctx.set_source_rgb(*c)
         ctx.rectangle(x, y + h * 0.3, w, h * 0.7)
@@ -105,12 +115,13 @@ def create_cairo_surface():
         ctx.line_to(x + w * 1.1, y + h * 0.3)
         ctx.close_path()
         ctx.fill()
-        ctx.set_source_rgb(0.6, 0.4, 0.25)
+        ctx.set_source_rgb(0.6, 0.4, 0.25) # Pintu
         ctx.rectangle(x + w * 0.35, y + h * 0.6, w * 0.3, h * 0.4)
         ctx.fill()
-        ctx.set_source_rgb(0.6, 0.75, 0.85)
+        ctx.set_source_rgb(0.6, 0.75, 0.85) # Jendela
         ctx.rectangle(x + w * 0.1, y + h * 0.4, w * 0.2, h * 0.15)
         ctx.fill()
+        ctx.set_source_rgb(0.6, 0.75, 0.85) # Jendela
         ctx.rectangle(x + w * 0.7, y + h * 0.4, w * 0.2, h * 0.15)
         ctx.fill()
 
@@ -125,6 +136,7 @@ def create_cairo_surface():
     for h in houses:
         draw_house(*h)
 
+    # Titik Finish
     ctx.set_source_rgb(0.9, 0.2, 0.2)
     ctx.arc(1150, 650, 25, 0, 2 * math.pi)
     ctx.fill()
@@ -142,24 +154,30 @@ def cairo_surface_to_pygame(surface):
         arr = buf.tobytes()
     except AttributeError:
         arr = bytes(buf)
+    
+    # Coba beberapa format pixel jika error
     for fmt in ("BGRA", "ARGB", "RGBA"):
         try:
             img = pygame.image.frombuffer(arr, (surface.get_width(), surface.get_height()), fmt)
             return img.convert_alpha()
         except Exception:
             continue
+    # Default fallback
     img = pygame.image.frombuffer(arr, (surface.get_width(), surface.get_height()), "RGBA")
     return img.convert_alpha()
 
+# Generate Map
 cairo_surf = create_cairo_surface()
 maze_surface = cairo_surface_to_pygame(cairo_surf).convert_alpha()
 
+# --- LOGIKA GAME ---
 def is_on_road(x, y, surf):
     x, y = int(x), int(y)
     if x < 0 or x >= WIDTH or y < 0 or y >= HEIGHT:
         return False
     try:
         r, g, b, a = surf.get_at((x, y))
+        # Logika deteksi jalan: Warna jalan adalah RGB > 150 (putih kekuningan)
         return r > 150 and g > 150 and b > 150
     except:
         return False
@@ -167,14 +185,15 @@ def is_on_road(x, y, surf):
 def generate_trees():
     trees = []
     random.seed(42)
-
     attempts = 0
     while len(trees) < 60 and attempts < 500:
         x = random.randint(20, WIDTH - 20)
         y = random.randint(20, HEIGHT - 20)
+        # Jangan taruh pohon di jalan
         if is_on_road(x, y, maze_surface):
             attempts += 1
             continue
+        # Jangan tumpuk pohon
         too_close = False
         for tx, ty, _ in trees:
             if math.hypot(x - tx, y - ty) < 30:
@@ -197,6 +216,7 @@ def draw_tree(surf, x, y, size):
         offset = i * (size // 6)
         pygame.draw.circle(surf, color, (x, y - offset), size - i * 2)
 
+# --- DATA KUIS ---
 QUIZ_DATA = [
     {
         "pertanyaan": "Apa arti rambu segitiga dengan pinggir merah?",
@@ -224,8 +244,9 @@ QUIZ_POINTS = [
     (950, 360),
 ]
 
+# --- CLASS PLAYER ---
 class Player:
-    def _init_(self, x, y):
+    def __init__(self, x, y):
         self.w = 24
         self.h = 14
         self.image = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
@@ -245,6 +266,7 @@ class Player:
     def move(self, dx, dy, road_surface):
         nx = self.rect.centerx + dx
         ny = self.rect.centery + dy
+        # Cek tabrakan di 5 titik mobil
         check_points = [
             (nx, ny),
             (nx + self.w//2 - 2, ny),
@@ -263,6 +285,7 @@ class Player:
             return True
         return False
 
+# --- UI HELPER ---
 def wrap_text(font, text, max_w):
     words = text.split(" ")
     lines = []
@@ -352,6 +375,7 @@ def run_quiz_loop(quiz_item, player):
             pygame.time.delay(1200)
             return answered_correct
 
+# --- SETUP SPRITES ---
 quiz_sprites = []
 for i, (qx, qy) in enumerate(QUIZ_POINTS):
     rect = pygame.Rect(0,0,28,28)
@@ -382,11 +406,13 @@ def draw_quiz_points():
         fnt = pygame.font.SysFont(None, 22, bold=True)
         screen.blit(fnt.render("!", True, BLACK), (cx-6, cy-12))
 
+# --- MAIN LOOP ---
 def main():
     player = Player(50, 650)
     running = True
 
-    print("🎮 KONTROL:")
+    # -- REVISI: EMOJI DIHAPUS AGAR TIDAK ERROR DI WINDOWS --
+    print("=== KONTROL ===")
     print("  WASD atau Arrow Keys = Gerak")
     print("  ESC = Keluar")
     print("  Mobil HANYA bisa jalan di jalan!")
@@ -399,6 +425,8 @@ def main():
                 running = False
             if ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
                 running = False
+        
+        # Gerakan Player
         keys = pygame.key.get_pressed()
         vx = vy = 0
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
@@ -409,11 +437,14 @@ def main():
             vy -= 1
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             vy += 1
+        
         if vx != 0 or vy != 0:
             mag = math.hypot(vx, vy)
             dx = vx / mag * player.speed
             dy = vy / mag * player.speed
             player.move(dx, dy, maze_surface)
+
+        # Cek Quiz
         for q in quiz_sprites:
             if q["active"] and player.rect.colliderect(q["rect"]):
                 idx = q["index"] % len(QUIZ_DATA)
@@ -421,13 +452,16 @@ def main():
                 if ok:
                     q["active"] = False
                 else:
-                    player.rect.center = (50, 650)
+                    player.rect.center = (50, 650) # Hukuman balik ke start
+
+        # Cek Finish
         finish_rect = pygame.Rect(1125, 625, 50, 50)
         if player.rect.colliderect(finish_rect):
             if all(not q["active"] for q in quiz_sprites):
                 screen.fill(BG_RGB)
                 fnt = pygame.font.SysFont(None, 40, bold=True)
-                txt = fnt.render("🎉 SELAMAT! Kamu Menang! 🎉", True, WHITE)
+                # Emoji juga dihapus di layar in-game untuk mencegah kotak-kotak (tofu) jika font tidak support
+                txt = fnt.render("SELAMAT! Kamu Menang!", True, WHITE)
                 screen.blit(txt, (WIDTH//2 - txt.get_width()//2, HEIGHT//2 - 40))
                 sub = pygame.font.SysFont(None, 28).render(f"Score akhir: {player.score}", True, YELLOW)
                 screen.blit(sub, (WIDTH//2 - sub.get_width()//2, HEIGHT//2 + 10))
@@ -435,6 +469,8 @@ def main():
                 pygame.time.delay(3000)
                 running = False
                 continue
+
+        # Draw Semuanya
         screen.blit(maze_surface, (0, 0))
         for tx, ty, tsize in trees:
             draw_tree(screen, tx, ty, tsize)
@@ -446,5 +482,5 @@ def main():
     pygame.quit()
     sys.exit()
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
