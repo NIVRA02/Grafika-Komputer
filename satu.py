@@ -2,7 +2,7 @@ import sys
 import math
 import pygame
 import random
-import game_assets  # Kita import file aset
+import game_assets  # Menggunakan file aset untuk gambar
 
 # --- INISIALISASI ---
 pygame.init()
@@ -29,7 +29,7 @@ pygame.display.set_caption("Car Maze - Road Only + Trees")
 clock = pygame.time.Clock()
 
 # --- PEMBUATAN MAP ---
-# Map sekarang dibuat di game_assets.py agar kode utama lebih bersih
+# Map dimuat dari game_assets.py
 maze_surface = game_assets.generate_map_surface(WIDTH, HEIGHT)
 
 # --- LOGIKA GAME ---
@@ -106,35 +106,57 @@ QUIZ_POINTS = [
     (950, 360),
 ]
 
-# --- CLASS PLAYER (DIPERBARUI) ---
+# --- CLASS PLAYER (DIPERBARUI DENGAN ROTASI) ---
 class Player:
     def __init__(self, x, y):
         self.w = 24
         self.h = 14
-        # MENGGUNAKAN GAMBAR BARU DARI GAME_ASSETS
+        # Load gambar dari assets
         self.image = game_assets.create_car_sprite(self.w, self.h, RED)
-        self.original_image = self.image # Simpan gambar asli jika nanti butuh rotasi
+        
+        # PENTING: Simpan gambar asli (menghadap kanan/0 derajat) sebagai referensi
+        self.original_image = self.image 
+        self.angle = 0  # Sudut awal (menghadap kanan)
         
         self.rect = self.image.get_rect(center=(x, y))
         self.speed = 3.0
         self.score = 0
 
+    def rotate(self, angle):
+        # Hanya putar jika sudut berubah agar efisien
+        if self.angle != angle:
+            self.angle = angle
+            # Putar gambar asli
+            self.image = pygame.transform.rotate(self.original_image, self.angle)
+            # Update rect agar posisi tetap di tengah (center) setelah diputar
+            self.rect = self.image.get_rect(center=self.rect.center)
+            
+            # Update dimensi w dan h agar collision detection lebih akurat
+            # Jika vertikal (atas/bawah), lebar dan tinggi ditukar
+            if angle == 90 or angle == 270: 
+                self.w, self.h = 14, 24 
+            else: # Horizontal (kanan/kiri)
+                self.w, self.h = 24, 14
+
     def move(self, dx, dy, road_surface):
         nx = self.rect.centerx + dx
         ny = self.rect.centery + dy
+        
         # Cek tabrakan di 5 titik mobil
         check_points = [
-            (nx, ny),
-            (nx + self.w//2 - 2, ny),
-            (nx - self.w//2 + 2, ny),
-            (nx, ny - self.h//2 + 2),
-            (nx, ny + self.h//2 - 2),
+            (nx, ny),                 # Tengah
+            (nx + self.w//2 - 2, ny), # Kanan (relatif terhadap kotak)
+            (nx - self.w//2 + 2, ny), # Kiri
+            (nx, ny - self.h//2 + 2), # Atas
+            (nx, ny + self.h//2 - 2), # Bawah
         ]
+        
         all_valid = True
         for px, py in check_points:
             if not is_on_road(px, py, road_surface):
                 all_valid = False
                 break
+                
         if all_valid:
             self.rect.centerx = int(nx)
             self.rect.centery = int(ny)
@@ -284,15 +306,27 @@ def main():
         # Gerakan Player
         keys = pygame.key.get_pressed()
         vx = vy = 0
+        
+        # Logika Gerak + Rotasi
+        # Kiri (Putar 180 derajat)
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             vx -= 1
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            player.rotate(180) 
+        # Kanan (Putar 0 derajat)
+        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             vx += 1
+            player.rotate(0)   
+        
+        # Atas (Putar 90 derajat)
         if keys[pygame.K_UP] or keys[pygame.K_w]:
             vy -= 1
-        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            player.rotate(90)  
+        # Bawah (Putar 270 derajat)
+        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
             vy += 1
+            player.rotate(270) 
         
+        # Eksekusi Gerakan
         if vx != 0 or vy != 0:
             mag = math.hypot(vx, vy)
             dx = vx / mag * player.speed
