@@ -128,12 +128,8 @@ def create_car_sprite(width, height, color):
     """Membuat sprite mobil yang lebih detail dengan PyCairo."""
     s = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
     ctx = cairo.Context(s)
-
-    # Pastikan scaling koordinat enak dilihat (mobil menghadap kanan secara default)
-    # Kita asumsikan mobil digambar horizontal, nanti di game tinggal di rotate kalau perlu
-    # Tapi karena game ini simple gerak kotak, kita gambar statis aja dulu.
     
-    # 1. Ban Mobil (Hitam) - Sedikit keluar dari body
+    # 1. Ban Mobil (Hitam)
     ctx.set_source_rgb(0.1, 0.1, 0.1)
     # Ban Kiri Depan & Belakang
     ctx.rectangle(4, 0, 4, 3); ctx.fill()
@@ -145,40 +141,56 @@ def create_car_sprite(width, height, color):
     # 2. Body Mobil (Warna Pilihan)
     r, g, b = color[0]/255.0, color[1]/255.0, color[2]/255.0
     ctx.set_source_rgb(r, g, b)
-    # Gambar rounded rectangle untuk body
-    # (x, y, w, h, radius) simulasi manual
     ctx.new_path()
-    # Sudut-sudut agak bulat
-    m = 2 # margin dari ban
     ctx.rectangle(0, 2, width, height-4) 
     ctx.fill()
 
     # 3. Atap/Kaca (Biru Gelap/Hitam)
     ctx.set_source_rgb(0.2, 0.2, 0.3)
-    # Kotak di tengah sebagai kabin
     ctx.rectangle(6, 4, 12, height-8) 
     ctx.fill()
 
     # 4. Kaca Depan & Belakang (Biru Muda)
     ctx.set_source_rgb(0.6, 0.8, 0.9)
-    # Kaca Depan (Kanan jika asumsi hadap kanan)
     ctx.rectangle(14, 5, 3, height-10) 
     ctx.fill()
-    # Kaca Belakang
     ctx.rectangle(7, 5, 2, height-10)
     ctx.fill()
 
-    # 5. Lampu Depan (Kuning) - Asumsi depan di KANAN (sesuai posisi awal game)
+    # 5. Lampu Depan (Kuning)
     ctx.set_source_rgb(1.0, 1.0, 0.2)
-    ctx.arc(width-2, 4, 1.5, 0, 2*math.pi); ctx.fill() # Kiri
-    ctx.arc(width-2, height-4, 1.5, 0, 2*math.pi); ctx.fill() # Kanan
+    ctx.arc(width-2, 4, 1.5, 0, 2*math.pi); ctx.fill() 
+    ctx.arc(width-2, height-4, 1.5, 0, 2*math.pi); ctx.fill()
 
-    # 6. Lampu Rem (Merah) - Di Kiri
+    # 6. Lampu Rem (Merah)
     ctx.set_source_rgb(0.8, 0.1, 0.1)
     ctx.rectangle(0, 3, 1, 2); ctx.fill()
     ctx.rectangle(0, height-5, 1, 2); ctx.fill()
 
     return cairo_surface_to_pygame(s)
+
+def create_heart_sprite():
+    """Membuat sprite hati dengan PyCairo (Ukuran 40x40)."""
+    w, h = 40, 40 
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+    ctx = cairo.Context(surface)
+    
+    # Gambar bentuk hati
+    ctx.set_source_rgba(1, 0.2, 0.5, 1) # Warna Pink Kemerahan
+    ctx.move_to(w * 0.5, h * 0.35)
+    ctx.curve_to(w * 0.9, h * 0.1, w, h * 0.6, w * 0.5, h)
+    ctx.curve_to(w * 0, h * 0.6, w * 0.1, h * 0.1, w * 0.5, h * 0.35)
+    ctx.fill()
+    
+    # Outline putih
+    ctx.set_source_rgba(1, 1, 1, 0.8)
+    ctx.set_line_width(2.0)
+    ctx.move_to(w * 0.5, h * 0.35)
+    ctx.curve_to(w * 0.9, h * 0.1, w, h * 0.6, w * 0.5, h)
+    ctx.curve_to(w * 0, h * 0.6, w * 0.1, h * 0.1, w * 0.5, h * 0.35)
+    ctx.stroke()
+    
+    return cairo_surface_to_pygame(surface)
 
 def cairo_surface_to_pygame(surface):
     """Mengubah surface Cairo menjadi surface Pygame."""
@@ -188,14 +200,12 @@ def cairo_surface_to_pygame(surface):
     except AttributeError:
         arr = bytes(buf)
     
-    # Coba beberapa format pixel jika error
     for fmt in ("BGRA", "ARGB", "RGBA"):
         try:
             img = pygame.image.frombuffer(arr, (surface.get_width(), surface.get_height()), fmt)
             return img.convert_alpha()
         except Exception:
             continue
-    # Default fallback
     img = pygame.image.frombuffer(arr, (surface.get_width(), surface.get_height()), "RGBA")
     return img.convert_alpha()
 
