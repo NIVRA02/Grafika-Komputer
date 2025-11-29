@@ -46,10 +46,24 @@ def is_on_road(x, y, surf):
         return False
 
 # --- GAMBAR HATI DIAMBIL DARI GAME_ASSETS ---
-# Fungsi create_heart_sprite() sudah dihapus dari sini
 heart_image = game_assets.create_heart_sprite()
 
-# --- TITIK SPAWN HATI (SAFE SPOTS) ---
+# --- DAFTAR LOKASI ---
+
+# 1. LOKASI POHON (FIXED / TIDAK ACAK)
+# Format: (x, y, ukuran)
+FIXED_TREE_POSITIONS = [
+    (80, 80, 16), (200, 600, 14), (1000, 100, 18), (1100, 600, 12),
+    (300, 400, 16), (600, 50, 14), (700, 600, 18), (900, 300, 12),
+    (50, 300, 16), (1150, 50, 14), (400, 600, 18), (500, 100, 12),
+    (250, 150, 16), (850, 500, 14), (950, 50, 18), (150, 50, 12),
+    (600, 300, 16), (750, 100, 14), (350, 550, 18), (1050, 550, 12),
+    (450, 200, 16), (120, 480, 14), (980, 620, 16), (20, 350, 14),
+    (1100, 300, 18), (800, 650, 12), (550, 450, 16), (320, 120, 14),
+    (680, 380, 18), (920, 180, 12)
+]
+
+# 2. KANDIDAT LOKASI HATI (SAFE SPOTS)
 HEART_CANDIDATES = [
     (50, 600), (50, 500), (50, 400), 
     (100, 550), (100, 450), (100, 350), 
@@ -66,41 +80,46 @@ HEART_CANDIDATES = [
     (1150, 300), (1150, 400), (1150, 500), (1150, 600)
 ]
 
-def generate_objects(count, obj_type="tree"):
+# 3. KANDIDAT LOKASI KUIS (AKAN DIACAK)
+QUIZ_CANDIDATES = [
+    (150, 450), (200, 250), (400, 50), (450, 350), 
+    (500, 550), (700, 250), (950, 350), (1100, 550),
+    (600, 150), (800, 450), (300, 550), (1000, 250),
+    (120, 150), (900, 550), (250, 350), (1050, 150)
+]
+
+def generate_objects(count, obj_type="tree", occupied_positions=[]):
     objects = []
-    attempts = 0
     
+    # --- GENERATE HATI (RANDOM) ---
     if obj_type == "heart":
         candidates = HEART_CANDIDATES[:]
-        random.shuffle(candidates)
+        random.shuffle(candidates) # Acak urutan kandidat
         for cx, cy in candidates:
             if len(objects) >= count: break
-            if not is_on_road(cx, cy, maze_surface): continue # Safety check warna
-
-            too_close_quiz = False
-            for q in QUIZ_POINTS:
-                if math.hypot(cx - q[0], cy - q[1]) < 60:
-                    too_close_quiz = True
-                    break
             
-            if not too_close_quiz:
+            # Cek apakah posisi aman (di jalan)
+            if not is_on_road(cx, cy, maze_surface): continue 
+
+            # Cek agar tidak bertumpuk dengan posisi yang sudah terpakai (misal Kuis)
+            too_close = False
+            for (ox, oy) in occupied_positions:
+                 if math.hypot(cx - ox, cy - oy) < 60:
+                     too_close = True
+                     break
+            
+            if not too_close:
                 rect = heart_image.get_rect(center=(cx, cy))
                 objects.append({"rect": rect, "active": True})
         return objects
 
-    while len(objects) < count and attempts < 1000:
-        x = random.randint(30, WIDTH - 30)
-        y = random.randint(30, HEIGHT - 30)
-        if not is_on_road(x, y, maze_surface):
-            too_close = False
-            for obj in objects:
-                ox, oy = obj[0], obj[1]
-                if math.hypot(x - ox, y - oy) < 30:
-                    too_close = True; break
-            if not too_close:
-                size = random.choice([12, 14, 16, 18])
-                objects.append((x, y, size))
-        attempts += 1
+    # --- GENERATE POHON (TIDAK RANDOM / STATIC) ---
+    elif obj_type == "tree":
+        # Langsung pakai daftar koordinat tetap yang sudah kita buat di atas
+        for pos in FIXED_TREE_POSITIONS:
+             objects.append(pos) # (x, y, size)
+        return objects
+
     return objects
 
 def draw_tree(surf, x, y, size):
@@ -123,11 +142,6 @@ QUIZ_DATA = [
     {"pertanyaan": "Rambu huruf 'P' dicoret merah artinya?", "pilihan": ["Parkir Gratis", "Tempat Parkir", "Dilarang Parkir", "Dilarang Putar Balik"], "jawaban_benar": 2, "penjelasan": "P dicoret berarti Dilarang Parkir."},
     {"pertanyaan": "Batas kecepatan di area perumahan biasanya?", "pilihan": ["100 km/jam", "60 km/jam", "30-40 km/jam", "10 km/jam"], "jawaban_benar": 2, "penjelasan": "Di pemukiman kecepatan harus rendah (30-40 km/jam)."},
     {"pertanyaan": "Fungsi utama helm saat berkendara adalah?", "pilihan": ["Gaya-gayaan", "Melindungi Kepala", "Agar tidak panas", "Menghindari tilang"], "jawaban_benar": 1, "penjelasan": "Helm berfungsi melindungi kepala dari benturan."},
-]
-
-QUIZ_POINTS = [
-    (150, 450), (200, 250), (400, 50), (450, 350), 
-    (500, 550), (700, 250), (950, 350), (1100, 550),
 ]
 
 # --- CLASS PLAYER ---
@@ -306,7 +320,8 @@ bonus_texts = []
 
 def reset_game(player):
     """Mengembalikan semua variabel game ke kondisi awal"""
-    random.seed(42) 
+    # Kita tidak lagi menggunakan seed tetap untuk kuis dan hati agar posisi kuis berubah
+    # Namun pohon tetap statis karena menggunakan FIXED_TREE_POSITIONS
     
     player.rect.center = (50, 650)
     player.score = 0
@@ -314,16 +329,26 @@ def reset_game(player):
     
     global quiz_sprites
     quiz_sprites = []
-    for i, (qx, qy) in enumerate(QUIZ_POINTS):
+    
+    # --- MENENTUKAN LOKASI KUIS SECARA ACAK ---
+    # Mengambil 8 lokasi secara acak dari daftar kandidat kuis
+    current_quiz_points = random.sample(QUIZ_CANDIDATES, 8)
+    
+    for i, (qx, qy) in enumerate(current_quiz_points):
         rect = pygame.Rect(0,0,28,28)
         rect.center = (qx, qy)
         quiz_sprites.append({"rect": rect, "index": i, "active": True})
+    
+    # Simpan posisi kuis yang terpakai untuk menghindari tumpang tindih dengan hati
+    occupied_by_quiz = [(q["rect"].centerx, q["rect"].centery) for q in quiz_sprites]
         
     global trees
+    # Pohon sekarang Fixed (tidak random)
     trees = generate_objects(60, "tree")
     
     global hearts
-    hearts = generate_objects(5, "heart")
+    # Hati tetap random, tapi kita kirim posisi kuis agar tidak menimpa
+    hearts = generate_objects(5, "heart", occupied_positions=occupied_by_quiz)
     
     return pygame.time.get_ticks()
 
