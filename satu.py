@@ -1,8 +1,8 @@
 import sys
 import math
 import pygame
-import cairo
 import random
+import game_assets  # Kita import file aset
 
 # --- INISIALISASI ---
 pygame.init()
@@ -28,147 +28,9 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Car Maze - Road Only + Trees")
 clock = pygame.time.Clock()
 
-# --- PEMBUATAN MAP DENGAN PYCAIRO ---
-def create_cairo_surface():
-    s = cairo.ImageSurface(cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
-    ctx = cairo.Context(s)
-
-    # Background Rumput
-    ctx.set_source_rgb(0.35, 0.65, 0.35)
-    ctx.rectangle(0, 0, WIDTH, HEIGHT)
-    ctx.fill()
-
-    ctx.set_line_cap(cairo.LINE_CAP_ROUND)
-    ctx.set_line_join(cairo.LINE_JOIN_ROUND)
-    
-    # Jalur Jalan
-    paths = [
-        [(50, 650), (50, 550), (150, 550), (150, 450), (50, 450), (50, 350), (150, 350)],
-        [(150, 350), (150, 250), (50, 250), (50, 150), (150, 150), (150, 50), (250, 50)],
-        [(150, 250), (250, 250), (250, 350), (350, 350)],
-        [(250, 250), (250, 150), (350, 150), (350, 50), (450, 50)],
-        [(350, 150), (350, 250), (450, 250)],
-        [(350, 350), (350, 450), (250, 450), (250, 550), (350, 550)],
-        [(350, 450), (450, 450), (450, 350)],
-        [(450, 250), (550, 250), (550, 150), (650, 150)],
-        [(550, 250), (550, 350), (650, 350), (650, 250)],
-        [(450, 350), (450, 550), (550, 550), (550, 650)],
-        [(550, 550), (650, 550), (650, 450), (750, 450)],
-        [(650, 150), (750, 150), (750, 250), (850, 250)],
-        [(750, 250), (750, 350), (850, 350)],
-        [(750, 450), (750, 550), (850, 550), (850, 650)],
-        [(850, 550), (950, 550), (950, 450), (1050, 450)],
-        [(850, 250), (950, 250), (950, 150), (1050, 150)],
-        [(950, 250), (950, 350), (1050, 350)],
-        [(850, 350), (850, 450), (950, 450)],
-        [(1050, 150), (1050, 250), (1150, 250)],
-        [(1050, 250), (1050, 350), (950, 350)],
-        [(1050, 350), (1150, 350), (1150, 450), (1050, 450)],
-        [(1050, 450), (1050, 550), (1150, 550), (1150, 650)],
-        [(450, 50), (550, 50), (550, 150)],
-        [(250, 450), (150, 450), (150, 550)],
-        [(650, 250), (750, 250)],
-        [(650, 450), (650, 350)],
-    ]
-
-    # Gambar Aspal (Layer Bawah)
-    ctx.set_source_rgb(0.25, 0.45, 0.25) # Warna outline jalan
-    ctx.set_line_width(50)
-    for path in paths:
-        ctx.new_path()
-        ctx.move_to(path[0][0], path[0][1])
-        for p in path[1:]:
-            ctx.line_to(p[0], p[1])
-        ctx.stroke()
-
-    # Gambar Jalan Utama
-    ctx.set_source_rgb(0.92, 0.92, 0.90)
-    ctx.set_line_width(45)
-    for path in paths:
-        ctx.new_path()
-        ctx.move_to(path[0][0], path[0][1])
-        for p in path[1:]:
-            ctx.line_to(p[0], p[1])
-        ctx.stroke()
-
-    # Gambar Garis Putus-putus
-    ctx.set_source_rgb(0.85, 0.85, 0.83)
-    ctx.set_line_width(2)
-    ctx.set_dash([10, 10])
-    for path in paths:
-        ctx.new_path()
-        ctx.move_to(path[0][0], path[0][1])
-        for p in path[1:]:
-            ctx.line_to(p[0], p[1])
-        ctx.stroke()
-    ctx.set_dash([])
-
-    # Fungsi Gambar Rumah
-    def draw_house(x, y, w, h, c, roof):
-        ctx.set_source_rgb(*c)
-        ctx.rectangle(x, y + h * 0.3, w, h * 0.7)
-        ctx.fill()
-        ctx.set_source_rgb(*roof)
-        ctx.new_path()
-        ctx.move_to(x - w * 0.1, y + h * 0.3)
-        ctx.line_to(x + w * 0.5, y)
-        ctx.line_to(x + w * 1.1, y + h * 0.3)
-        ctx.close_path()
-        ctx.fill()
-        ctx.set_source_rgb(0.6, 0.4, 0.25) # Pintu
-        ctx.rectangle(x + w * 0.35, y + h * 0.6, w * 0.3, h * 0.4)
-        ctx.fill()
-        ctx.set_source_rgb(0.6, 0.75, 0.85) # Jendela
-        ctx.rectangle(x + w * 0.1, y + h * 0.4, w * 0.2, h * 0.15)
-        ctx.fill()
-        ctx.set_source_rgb(0.6, 0.75, 0.85) # Jendela
-        ctx.rectangle(x + w * 0.7, y + h * 0.4, w * 0.2, h * 0.15)
-        ctx.fill()
-
-    houses = [
-        (80, 375, 40, 50, (0.85, 0.75, 0.6), (0.6, 0.3, 0.2)),
-        (180, 500, 35, 45, (0.7, 0.8, 0.85), (0.4, 0.3, 0.5)),
-        (380, 80, 40, 50, (0.9, 0.7, 0.5), (0.5, 0.25, 0.3)),
-        (580, 380, 40, 50, (0.8, 0.75, 0.65), (0.5, 0.35, 0.3)),
-        (680, 500, 40, 50, (0.85, 0.75, 0.7), (0.6, 0.35, 0.3)),
-        (880, 100, 40, 50, (0.8, 0.75, 0.65), (0.5, 0.35, 0.3)),
-    ]
-    for h in houses:
-        draw_house(*h)
-
-    # Titik Finish
-    ctx.set_source_rgb(0.9, 0.2, 0.2)
-    ctx.arc(1150, 650, 25, 0, 2 * math.pi)
-    ctx.fill()
-    ctx.set_source_rgb(1, 1, 1)
-    ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
-    ctx.set_font_size(12)
-    ctx.move_to(1130, 655)
-    ctx.show_text("FINISH")
-
-    return s
-
-def cairo_surface_to_pygame(surface):
-    buf = surface.get_data()
-    try:
-        arr = buf.tobytes()
-    except AttributeError:
-        arr = bytes(buf)
-    
-    # Coba beberapa format pixel jika error
-    for fmt in ("BGRA", "ARGB", "RGBA"):
-        try:
-            img = pygame.image.frombuffer(arr, (surface.get_width(), surface.get_height()), fmt)
-            return img.convert_alpha()
-        except Exception:
-            continue
-    # Default fallback
-    img = pygame.image.frombuffer(arr, (surface.get_width(), surface.get_height()), "RGBA")
-    return img.convert_alpha()
-
-# Generate Map
-cairo_surf = create_cairo_surface()
-maze_surface = cairo_surface_to_pygame(cairo_surf).convert_alpha()
+# --- PEMBUATAN MAP ---
+# Map sekarang dibuat di game_assets.py agar kode utama lebih bersih
+maze_surface = game_assets.generate_map_surface(WIDTH, HEIGHT)
 
 # --- LOGIKA GAME ---
 def is_on_road(x, y, surf):
@@ -244,24 +106,18 @@ QUIZ_POINTS = [
     (950, 360),
 ]
 
-# --- CLASS PLAYER ---
+# --- CLASS PLAYER (DIPERBARUI) ---
 class Player:
     def __init__(self, x, y):
         self.w = 24
         self.h = 14
-        self.image = pygame.Surface((self.w, self.h), pygame.SRCALPHA)
-        self._draw_car()
+        # MENGGUNAKAN GAMBAR BARU DARI GAME_ASSETS
+        self.image = game_assets.create_car_sprite(self.w, self.h, RED)
+        self.original_image = self.image # Simpan gambar asli jika nanti butuh rotasi
+        
         self.rect = self.image.get_rect(center=(x, y))
         self.speed = 3.0
         self.score = 0
-
-    def _draw_car(self):
-        self.image.fill((0, 0, 0, 0))
-        body = pygame.Rect(0, 3, self.w, self.h - 5)
-        pygame.draw.rect(self.image, RED, body, border_radius=3)
-        pygame.draw.rect(self.image, (0, 0, 0), body, 2, border_radius=3)
-        pygame.draw.circle(self.image, BLACK, (6, self.h - 2), 2)
-        pygame.draw.circle(self.image, BLACK, (self.w - 6, self.h - 2), 2)
 
     def move(self, dx, dy, road_surface):
         nx = self.rect.centerx + dx
@@ -411,7 +267,6 @@ def main():
     player = Player(50, 650)
     running = True
 
-    # -- REVISI: EMOJI DIHAPUS AGAR TIDAK ERROR DI WINDOWS --
     print("=== KONTROL ===")
     print("  WASD atau Arrow Keys = Gerak")
     print("  ESC = Keluar")
@@ -460,7 +315,6 @@ def main():
             if all(not q["active"] for q in quiz_sprites):
                 screen.fill(BG_RGB)
                 fnt = pygame.font.SysFont(None, 40, bold=True)
-                # Emoji juga dihapus di layar in-game untuk mencegah kotak-kotak (tofu) jika font tidak support
                 txt = fnt.render("SELAMAT! Kamu Menang!", True, WHITE)
                 screen.blit(txt, (WIDTH//2 - txt.get_width()//2, HEIGHT//2 - 40))
                 sub = pygame.font.SysFont(None, 28).render(f"Score akhir: {player.score}", True, YELLOW)
