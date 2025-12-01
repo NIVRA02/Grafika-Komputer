@@ -192,6 +192,115 @@ def create_heart_sprite():
     
     return cairo_surface_to_pygame(surface)
 
+def create_sign_sprite(sign_type):
+    """
+    Membuat sprite rambu lalu lintas berdasarkan tipe.
+    Tipe: 'STOP', 'WARNING', 'NO_PARKING', 'BLUE', 'SPEED', 'GENERIC'
+    """
+    w, h = 32, 32  # Ukuran sprite
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+    ctx = cairo.Context(surface)
+    
+    cx, cy = w / 2, h / 2
+
+    if sign_type == "STOP":
+        # Rambu STOP: Octagon Merah
+        ctx.set_source_rgb(0.8, 0, 0)
+        # Menggambar Octagon sederhana
+        ctx.move_to(cx - 10, cy - 15)
+        ctx.line_to(cx + 10, cy - 15)
+        ctx.line_to(cx + 15, cy - 10)
+        ctx.line_to(cx + 15, cy + 10)
+        ctx.line_to(cx + 10, cy + 15)
+        ctx.line_to(cx - 10, cy + 15)
+        ctx.line_to(cx - 15, cy + 10)
+        ctx.line_to(cx - 15, cy - 10)
+        ctx.close_path()
+        ctx.fill()
+        
+        # Tulisan Putih (Garis saja karena kecil)
+        ctx.set_source_rgb(1, 1, 1)
+        ctx.set_line_width(2)
+        ctx.move_to(cx - 5, cy); ctx.line_to(cx + 5, cy) # Garis tengah
+        ctx.stroke()
+
+    elif sign_type == "WARNING":
+        # Rambu Peringatan: Segitiga Putih List Merah
+        ctx.set_source_rgb(1, 1, 1) # Putih
+        ctx.move_to(cx, cy - 15)
+        ctx.line_to(cx + 14, cy + 12)
+        ctx.line_to(cx - 14, cy + 12)
+        ctx.close_path()
+        ctx.fill_preserve()
+        
+        ctx.set_source_rgb(0.9, 0, 0) # Merah
+        ctx.set_line_width(3)
+        ctx.stroke()
+        
+        # Tanda Seru
+        ctx.set_source_rgb(0, 0, 0)
+        ctx.move_to(cx, cy - 5); ctx.line_to(cx, cy + 2); ctx.stroke()
+        ctx.arc(cx, cy + 6, 1, 0, 2*math.pi); ctx.fill()
+
+    elif sign_type == "NO_PARKING":
+        # Dilarang Parkir: Lingkaran Putih, List Merah, Huruf P dicoret
+        ctx.set_source_rgb(1, 1, 1)
+        ctx.arc(cx, cy, 14, 0, 2 * math.pi)
+        ctx.fill_preserve()
+        ctx.set_source_rgb(0.8, 0, 0)
+        ctx.set_line_width(3)
+        ctx.stroke()
+        
+        # Huruf P (Hitam)
+        ctx.set_source_rgb(0, 0, 0)
+        ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        ctx.set_font_size(14)
+        # Posisi manual agar pas di tengah
+        ctx.move_to(cx - 4, cy + 5) 
+        ctx.show_text("P")
+        
+        # Coretan Merah
+        ctx.set_source_rgb(0.8, 0, 0)
+        ctx.set_line_width(3)
+        ctx.move_to(cx - 8, cy - 8)
+        ctx.line_to(cx + 8, cy + 8)
+        ctx.stroke()
+
+    elif sign_type == "BLUE":
+        # Rambu Perintah/Info: Lingkaran Biru
+        ctx.set_source_rgb(0, 0.3, 0.8)
+        ctx.arc(cx, cy, 14, 0, 2 * math.pi)
+        ctx.fill()
+        ctx.set_source_rgb(1, 1, 1)
+        ctx.set_line_width(2)
+        # Panah sederhana
+        ctx.move_to(cx - 5, cy); ctx.line_to(cx + 5, cy)
+        ctx.move_to(cx + 2, cy - 3); ctx.line_to(cx + 5, cy); ctx.line_to(cx + 2, cy + 3)
+        ctx.stroke()
+
+    elif sign_type == "SPEED":
+        # Batas Kecepatan: Lingkaran Putih List Merah
+        ctx.set_source_rgb(1, 1, 1)
+        ctx.arc(cx, cy, 14, 0, 2 * math.pi)
+        ctx.fill_preserve()
+        ctx.set_source_rgb(0.8, 0, 0)
+        ctx.set_line_width(3)
+        ctx.stroke()
+        
+        ctx.set_source_rgb(0, 0, 0)
+        ctx.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        ctx.set_font_size(10)
+        ctx.move_to(cx - 6, cy + 4)
+        ctx.show_text("40")
+
+    else:
+        # Default (Kuning)
+        ctx.set_source_rgb(1, 0.8, 0.2)
+        ctx.rectangle(4, 4, 24, 24)
+        ctx.fill()
+
+    return cairo_surface_to_pygame(surface)
+
 def cairo_surface_to_pygame(surface):
     """Mengubah surface Cairo menjadi surface Pygame."""
     buf = surface.get_data()
